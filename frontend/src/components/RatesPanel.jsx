@@ -1,18 +1,51 @@
 import { LineChart, Line, YAxis, ResponsiveContainer, Tooltip } from 'recharts'
 import { fmtRate, fmtPct, spreadChangeColor } from '../utils/formatters'
 
-const RATE_ORDER = [
-  { key: 'fed_funds', label: 'Fed Funds' },
-  { key: 'sofr',      label: 'SOFR'      },
-  { key: 'us_2y',    label: 'UST 2Y'    },
-  { key: 'us_5y',    label: 'UST 5Y'    },
-  { key: 'us_10y',   label: 'UST 10Y'   },
-  { key: 'us_30y',   label: 'UST 30Y'   },
-  { key: '2s10s',    label: '2s10s'     },
-  { key: 'ecb_rate', label: 'ECB Depo'  },
-  { key: 'de_10y',   label: 'Bund 10Y'  },
-  { key: 'uk_10y',   label: 'Gilt 10Y'  },
-  { key: 'jp_10y',   label: 'JGB 10Y'   },
+// Groups render as labelled sub-rows
+const RATE_GROUPS = [
+  {
+    label: 'Policy & Short Rates',
+    color: '#3b82f6',
+    items: [
+      { key: 'fed_funds', label: 'Fed Funds' },
+      { key: 'sofr',      label: 'SOFR'      },
+      { key: 'ecb_rate',  label: 'ECB Depo'  },
+    ],
+  },
+  {
+    label: 'Nominal Curve',
+    color: '#6366f1',
+    items: [
+      { key: 'us_2y',   label: 'UST 2Y'  },
+      { key: 'us_5y',   label: 'UST 5Y'  },
+      { key: 'us_10y',  label: 'UST 10Y' },
+      { key: 'us_30y',  label: 'UST 30Y' },
+      { key: '10y_2ys', label: '2s10s'   },
+      { key: '5y_30ys', label: '5s30s'   },
+      { key: 'de_10y',  label: 'Bund 10Y'},
+      { key: 'uk_10y',  label: 'Gilt 10Y'},
+      { key: 'jp_10y',  label: 'JGB 10Y' },
+    ],
+  },
+  {
+    label: 'Real Rates (TIPS)',
+    color: '#10b981',
+    items: [
+      { key: 'tips_5y',  label: 'TIPS 5Y'  },
+      { key: 'tips_10y', label: 'TIPS 10Y' },
+      { key: 'tips_30y', label: 'TIPS 30Y' },
+      { key: 'real_10y', label: '10Y Real' },
+    ],
+  },
+  {
+    label: 'Breakeven Inflation',
+    color: '#ef4444',
+    items: [
+      { key: 'bei_5y',   label: '5Y BEI'   },
+      { key: 'bei_10y',  label: '10Y BEI'  },
+      { key: 'bei_5y5y', label: '5Y5Y Fwd' },
+    ],
+  },
 ]
 
 function RateTile({ meta, loading }) {
@@ -89,13 +122,23 @@ function RateTile({ meta, loading }) {
 
 export default function RatesPanel({ data, loading }) {
   return (
-    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-11 gap-2.5">
-      {RATE_ORDER.map(({ key, label }) => (
-        <RateTile
-          key={key}
-          meta={data?.[key] ? { ...data[key], label } : null}
-          loading={loading || !data}
-        />
+    <div className="space-y-4">
+      {RATE_GROUPS.map(({ label, color, items }) => (
+        <div key={label}>
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color }} />
+            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">{label}</span>
+          </div>
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-9 gap-2">
+            {items.map(({ key, label: itemLabel }) => (
+              <RateTile
+                key={key}
+                meta={data?.[key] ? { ...data[key], label: itemLabel } : null}
+                loading={loading || !data}
+              />
+            ))}
+          </div>
+        </div>
       ))}
     </div>
   )

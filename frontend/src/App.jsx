@@ -3,6 +3,9 @@ import Header from './components/Header'
 import SpreadGrid from './components/SpreadGrid'
 import CdxSection from './components/CdxSection'
 import RatesPanel from './components/RatesPanel'
+import MacroPanel from './components/MacroPanel'
+import FedBalanceSheet from './components/FedBalanceSheet'
+import { CommoditiesTable, FxTable } from './components/CommoditiesPanel'
 import EquityPanel from './components/EquityPanel'
 import ChartModal from './components/ChartModal'
 import { AlertTriangle } from 'lucide-react'
@@ -43,7 +46,14 @@ export default function App() {
   const [cdx, setCdx] = useState(null)
   const [equities, setEquities] = useState(null)
   const [rates, setRates] = useState(null)
-  const [loading, setLoading] = useState({ spreads: true, cdx: true, equities: true, rates: true })
+  const [macro, setMacro] = useState(null)
+  const [fed, setFed] = useState(null)
+  const [commodities, setCommodities] = useState(null)
+  const [fx, setFx] = useState(null)
+  const [loading, setLoading] = useState({
+    spreads: true, cdx: true, equities: true, rates: true,
+    macro: true, fed: true, commodities: true, fx: true,
+  })
   const [errors, setErrors] = useState({})
   const [lastUpdated, setLastUpdated] = useState(null)
   const [modal, setModal] = useState(null)
@@ -95,12 +105,55 @@ export default function App() {
     finally { setLoad('rates', false) }
   }, [period])
 
+  const fetchMacro = useCallback(async () => {
+    setLoad('macro', true)
+    try {
+      const res = await fetch(`/api/macro?period=${period}`)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      setMacro(await res.json())
+      setErr('macro', null)
+    } catch (e) { setErr('macro', e.message) }
+    finally { setLoad('macro', false) }
+  }, [period])
+
+  const fetchFed = useCallback(async () => {
+    setLoad('fed', true)
+    try {
+      const res = await fetch(`/api/fed?period=${period}`)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      setFed(await res.json())
+      setErr('fed', null)
+    } catch (e) { setErr('fed', e.message) }
+    finally { setLoad('fed', false) }
+  }, [period])
+
+  const fetchCommodities = useCallback(async () => {
+    setLoad('commodities', true)
+    try {
+      const res = await fetch(`/api/commodities?period=${period}`)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      setCommodities(await res.json())
+      setErr('commodities', null)
+    } catch (e) { setErr('commodities', e.message) }
+    finally { setLoad('commodities', false) }
+  }, [period])
+
+  const fetchFx = useCallback(async () => {
+    setLoad('fx', true)
+    try {
+      const res = await fetch(`/api/fx?period=${period}`)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      setFx(await res.json())
+      setErr('fx', null)
+    } catch (e) { setErr('fx', e.message) }
+    finally { setLoad('fx', false) }
+  }, [period])
+
   const refreshAll = useCallback(() => {
-    fetchSpreads()
-    fetchCdx()
-    fetchEquities()
-    fetchRates()
-  }, [fetchSpreads, fetchCdx, fetchEquities, fetchRates])
+    fetchSpreads(); fetchCdx(); fetchEquities(); fetchRates()
+    fetchMacro(); fetchFed(); fetchCommodities(); fetchFx()
+  }, [fetchSpreads, fetchCdx, fetchEquities, fetchRates,
+      fetchMacro, fetchFed, fetchCommodities, fetchFx])
 
   // Fetch on period change
   useEffect(() => { refreshAll() }, [refreshAll])
@@ -167,11 +220,11 @@ export default function App() {
 
         <Divider />
 
-        {/* ── Rates ───────────────────────────────────────────────────── */}
+        {/* ── Rates, TIPS & Breakevens ────────────────────────────────── */}
         <section>
           <SectionHeader
-            title="Interest Rates"
-            subtitle="Central bank rates and government bond yields via FRED"
+            title="Interest Rates · Real Yields · Breakeven Inflation"
+            subtitle="Nominal curve · TIPS real yields · Breakeven inflation expectations · FRED"
           />
           {errors.rates
             ? <ErrorBanner message={`Rates: ${errors.rates}`} />
@@ -181,11 +234,39 @@ export default function App() {
 
         <Divider />
 
+        {/* ── Fed Balance Sheet ────────────────────────────────────────── */}
+        <section>
+          <SectionHeader
+            title="Federal Reserve Balance Sheet"
+            subtitle="Total assets, composition and reserve balances · FRED"
+          />
+          {errors.fed
+            ? <ErrorBanner message={`Fed: ${errors.fed}`} />
+            : <FedBalanceSheet data={fed} loading={loading.fed} />
+          }
+        </section>
+
+        <Divider />
+
+        {/* ── Macro Indicators ─────────────────────────────────────────── */}
+        <section>
+          <SectionHeader
+            title="Macro Indicators"
+            subtitle="Growth · Inflation · Labor · Activity — monthly/quarterly releases · FRED"
+          />
+          {errors.macro
+            ? <ErrorBanner message={`Macro: ${errors.macro}`} />
+            : <MacroPanel data={macro} loading={loading.macro} />
+          }
+        </section>
+
+        <Divider />
+
         {/* ── Global Equities ─────────────────────────────────────────── */}
         <section>
           <SectionHeader
             title="Global Equity Markets"
-            subtitle="Major indices and ETF benchmarks via Yahoo Finance"
+            subtitle="Major indices and ETF benchmarks · Yahoo Finance"
           />
           {errors.equities
             ? <ErrorBanner message={`Equities: ${errors.equities}`} />
@@ -193,12 +274,30 @@ export default function App() {
           }
         </section>
 
+        <Divider />
+
+        {/* ── Commodities & FX ─────────────────────────────────────────── */}
+        <section>
+          <SectionHeader
+            title="Commodities & FX"
+            subtitle="Front-month futures · Indicative mid-market FX rates · Yahoo Finance"
+          />
+          <div className="space-y-4">
+            {errors.commodities
+              ? <ErrorBanner message={`Commodities: ${errors.commodities}`} />
+              : <CommoditiesTable data={commodities} loading={loading.commodities} />
+            }
+            {errors.fx
+              ? <ErrorBanner message={`FX: ${errors.fx}`} />
+              : <FxTable data={fx} loading={loading.fx} />
+            }
+          </div>
+        </section>
+
         {/* Footer */}
         <footer className="border-t border-slate-800/50 pt-4 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-600 font-mono">
           <span>Market Dashboard · Personal Use Only</span>
-          <span>
-            Data: FRED (ICE BofA / Federal Reserve) · Yahoo Finance · Morningstar (planned)
-          </span>
+          <span>Data: FRED (ICE BofA / Federal Reserve) · Yahoo Finance</span>
         </footer>
 
       </main>

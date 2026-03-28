@@ -229,16 +229,92 @@ EQUITY_TICKERS = [
 ]
 
 RATE_SERIES = [
+    # Policy rates
     {"key": "fed_funds", "fred_id": "DFF",              "name": "Fed Funds",      "region": "US"},
     {"key": "sofr",      "fred_id": "SOFR",             "name": "SOFR",           "region": "US"},
-    {"key": "us_2y",     "fred_id": "DGS2",             "name": "US 2Y",          "region": "US"},
-    {"key": "us_5y",     "fred_id": "DGS5",             "name": "US 5Y",          "region": "US"},
-    {"key": "us_10y",    "fred_id": "DGS10",            "name": "US 10Y",         "region": "US"},
-    {"key": "us_30y",    "fred_id": "DGS30",            "name": "US 30Y",         "region": "US"},
-    {"key": "ecb_rate",  "fred_id": "ECBDFR",           "name": "ECB Depo Rate",  "region": "Europe"},
+    # UST nominal curve
+    {"key": "us_2y",     "fred_id": "DGS2",             "name": "UST 2Y",         "region": "US"},
+    {"key": "us_5y",     "fred_id": "DGS5",             "name": "UST 5Y",         "region": "US"},
+    {"key": "us_10y",    "fred_id": "DGS10",            "name": "UST 10Y",        "region": "US"},
+    {"key": "us_30y",    "fred_id": "DGS30",            "name": "UST 30Y",        "region": "US"},
+    # TIPS real yields
+    {"key": "tips_5y",   "fred_id": "DFII5",            "name": "TIPS 5Y",        "region": "Real"},
+    {"key": "tips_10y",  "fred_id": "DFII10",           "name": "TIPS 10Y",       "region": "Real"},
+    {"key": "tips_30y",  "fred_id": "DFII30",           "name": "TIPS 30Y",       "region": "Real"},
+    # Breakeven inflation
+    {"key": "bei_5y",    "fred_id": "T5YIE",            "name": "5Y BEI",         "region": "Inflation"},
+    {"key": "bei_10y",   "fred_id": "T10YIE",           "name": "10Y BEI",        "region": "Inflation"},
+    {"key": "bei_5y5y",  "fred_id": "T5YIFR",           "name": "5Y5Y Fwd",       "region": "Inflation"},
+    # International
+    {"key": "ecb_rate",  "fred_id": "ECBDFR",           "name": "ECB Depo",       "region": "Europe"},
     {"key": "de_10y",    "fred_id": "IRLTLT01DEM156N",  "name": "Bund 10Y",       "region": "Europe"},
     {"key": "uk_10y",    "fred_id": "IRLTLT01GBM156N",  "name": "Gilt 10Y",       "region": "UK"},
     {"key": "jp_10y",    "fred_id": "IRLTLT01JPM156N",  "name": "JGB 10Y",        "region": "Asia"},
+]
+
+# ─── Macro economic indicators ────────────────────────────────────────────────
+
+MACRO_SERIES = [
+    # Growth
+    {"key": "gdp",          "fred_id": "A191RL1Q225SBEA", "name": "Real GDP",          "unit": "% ann.",  "transform": "level",   "freq": "Q", "color": "#3b82f6",  "target": None},
+    # Inflation (level series → YoY computed)
+    {"key": "core_pce",     "fred_id": "PCEPILFE",        "name": "Core PCE",          "unit": "% YoY",   "transform": "yoy",     "freq": "M", "color": "#ef4444",  "target": 2.0},
+    {"key": "core_cpi",     "fred_id": "CPILFESL",        "name": "Core CPI",          "unit": "% YoY",   "transform": "yoy",     "freq": "M", "color": "#f97316",  "target": None},
+    {"key": "cpi",          "fred_id": "CPIAUCSL",        "name": "CPI",               "unit": "% YoY",   "transform": "yoy",     "freq": "M", "color": "#fb923c",  "target": None},
+    {"key": "pce",          "fred_id": "PCEPI",           "name": "PCE",               "unit": "% YoY",   "transform": "yoy",     "freq": "M", "color": "#fbbf24",  "target": 2.0},
+    # Labor
+    {"key": "unemployment", "fred_id": "UNRATE",          "name": "Unemployment",      "unit": "%",       "transform": "level",   "freq": "M", "color": "#10b981",  "target": None},
+    {"key": "nfp",          "fred_id": "PAYEMS",          "name": "Payrolls",          "unit": "K MoM",   "transform": "mom",     "freq": "M", "color": "#06b6d4",  "target": None},
+    # Activity
+    {"key": "indpro",       "fred_id": "INDPRO",          "name": "Industrial Prod.",  "unit": "% YoY",   "transform": "yoy",     "freq": "M", "color": "#8b5cf6",  "target": None},
+    {"key": "retail_sales", "fred_id": "RSXFS",           "name": "Retail Sales",      "unit": "% YoY",   "transform": "yoy",     "freq": "M", "color": "#a78bfa",  "target": None},
+    {"key": "housing",      "fred_id": "HOUST",           "name": "Housing Starts",    "unit": "K SAAR",  "transform": "level",   "freq": "M", "color": "#84cc16",  "target": None},
+    {"key": "lei",          "fred_id": "USSLIND",         "name": "Leading Index",     "unit": "% MoM",   "transform": "mom_pct", "freq": "M", "color": "#34d399",  "target": None},
+    {"key": "umich",        "fred_id": "UMCSENT",         "name": "UMich Sentiment",   "unit": "index",   "transform": "level",   "freq": "M", "color": "#22d3ee",  "target": None},
+]
+
+# ─── Commodities ──────────────────────────────────────────────────────────────
+
+COMMODITY_TICKERS = [
+    {"key": "wti",      "ticker": "CL=F",   "name": "WTI Crude",    "unit": "USD/bbl",    "category": "Energy"},
+    {"key": "brent",    "ticker": "BZ=F",   "name": "Brent Crude",  "unit": "USD/bbl",    "category": "Energy"},
+    {"key": "natgas",   "ticker": "NG=F",   "name": "Natural Gas",  "unit": "USD/MMBtu",  "category": "Energy"},
+    {"key": "gold",     "ticker": "GC=F",   "name": "Gold",         "unit": "USD/oz",     "category": "Metals"},
+    {"key": "silver",   "ticker": "SI=F",   "name": "Silver",       "unit": "USD/oz",     "category": "Metals"},
+    {"key": "copper",   "ticker": "HG=F",   "name": "Copper",       "unit": "USD/lb",     "category": "Metals"},
+    {"key": "platinum", "ticker": "PL=F",   "name": "Platinum",     "unit": "USD/oz",     "category": "Metals"},
+    {"key": "wheat",    "ticker": "ZW=F",   "name": "Wheat",        "unit": "USD/bu",     "category": "Agri"},
+    {"key": "corn",     "ticker": "ZC=F",   "name": "Corn",         "unit": "USD/bu",     "category": "Agri"},
+    {"key": "soybeans", "ticker": "ZS=F",   "name": "Soybeans",     "unit": "USD/bu",     "category": "Agri"},
+]
+
+# ─── FX ──────────────────────────────────────────────────────────────────────
+
+FX_TICKERS = [
+    {"key": "dxy",    "ticker": "DX-Y.NYB", "name": "DXY",      "quote": "index",       "usd_dir": "direct"},
+    {"key": "eurusd", "ticker": "EURUSD=X", "name": "EUR/USD",  "quote": "USD/EUR",     "usd_dir": "inverse"},
+    {"key": "gbpusd", "ticker": "GBPUSD=X", "name": "GBP/USD",  "quote": "USD/GBP",     "usd_dir": "inverse"},
+    {"key": "usdjpy", "ticker": "USDJPY=X", "name": "USD/JPY",  "quote": "JPY/USD",     "usd_dir": "direct"},
+    {"key": "usdchf", "ticker": "USDCHF=X", "name": "USD/CHF",  "quote": "CHF/USD",     "usd_dir": "direct"},
+    {"key": "audusd", "ticker": "AUDUSD=X", "name": "AUD/USD",  "quote": "USD/AUD",     "usd_dir": "inverse"},
+    {"key": "usdcad", "ticker": "USDCAD=X", "name": "USD/CAD",  "quote": "CAD/USD",     "usd_dir": "direct"},
+    {"key": "usdcny", "ticker": "USDCNY=X", "name": "USD/CNY",  "quote": "CNY/USD",     "usd_dir": "direct"},
+    {"key": "usdbrl", "ticker": "USDBRL=X", "name": "USD/BRL",  "quote": "BRL/USD",     "usd_dir": "direct"},
+    {"key": "usdmxn", "ticker": "USDMXN=X", "name": "USD/MXN",  "quote": "MXN/USD",     "usd_dir": "direct"},
+    {"key": "usdinr", "ticker": "USDINR=X", "name": "USD/INR",  "quote": "INR/USD",     "usd_dir": "direct"},
+    {"key": "usdkrw", "ticker": "USDKRW=X", "name": "USD/KRW",  "quote": "KRW/USD",     "usd_dir": "direct"},
+    {"key": "usdzar", "ticker": "USDZAR=X", "name": "USD/ZAR",  "quote": "ZAR/USD",     "usd_dir": "direct"},
+]
+
+# ─── Fed balance sheet ────────────────────────────────────────────────────────
+
+FED_SERIES = [
+    {"key": "fed_total",    "fred_id": "WALCL",   "name": "Total Assets",     "unit": "$B"},
+    {"key": "fed_tsy",      "fred_id": "TREAST",  "name": "Treasuries",       "unit": "$B"},
+    {"key": "fed_mbs",      "fred_id": "MBST",    "name": "MBS Holdings",     "unit": "$B"},
+    {"key": "fed_revrepo",  "fred_id": "WLRRAL",  "name": "Reverse Repo",     "unit": "$B"},
+    {"key": "fed_reserves", "fred_id": "WRESBAL", "name": "Reserve Balances", "unit": "$B"},
+    {"key": "m2",           "fred_id": "M2SL",    "name": "M2 Money Supply",  "unit": "$B"},
 ]
 
 
@@ -277,6 +353,33 @@ async def fred_fetch_bps(client: httpx.AsyncClient, series_id: str, start_date: 
     """Fetch FRED OAS series and convert percent → basis points."""
     raw = await fred_fetch_raw(client, series_id, start_date)
     return [{"date": d["date"], "value": round(d["value"] * 100, 2)} for d in raw]
+
+
+def compute_yoy(data: list[dict]) -> list[dict]:
+    """Year-over-year % change from a monthly level series."""
+    by_ym: dict[str, float] = {}
+    for d in data:
+        ym = d["date"][:7]  # "YYYY-MM"
+        by_ym[ym] = d["value"]
+    result = []
+    for d in data:
+        dt = datetime.strptime(d["date"], "%Y-%m-%d")
+        prev_dt = dt.replace(year=dt.year - 1)
+        prev_ym = prev_dt.strftime("%Y-%m")
+        prev_val = by_ym.get(prev_ym)
+        if prev_val is not None and prev_val != 0:
+            result.append({"date": d["date"], "value": round((d["value"] / prev_val - 1) * 100, 3)})
+    return result
+
+
+def compute_mom(data: list[dict], pct: bool = False) -> list[dict]:
+    """Month-over-month absolute or percent change."""
+    result = []
+    for i in range(1, len(data)):
+        prev, curr = data[i - 1]["value"], data[i]["value"]
+        val = round((curr / prev - 1) * 100, 3) if (pct and prev) else round(curr - prev, 3)
+        result.append({"date": data[i]["date"], "value": val})
+    return result
 
 
 def compute_stats(data: list[dict], is_rate: bool = False) -> dict:
@@ -441,20 +544,208 @@ async def get_rates(period: str = Query("3y")):
             except Exception as e:
                 results[series["key"]] = {**series, "data": [], "stats": {}, "error": str(e)}
 
-        # Derived: 2s10s slope
-        if "us_2y" in results and "us_10y" in results:
-            d2 = {d["date"]: d["value"] for d in results["us_2y"].get("data", [])}
-            d10 = {d["date"]: d["value"] for d in results["us_10y"].get("data", [])}
-            common = sorted(set(d2) & set(d10))
-            slope = [{"date": dt, "value": round((d10[dt] - d2[dt]) * 100, 1)} for dt in common]
-            results["2s10s"] = {
-                "key": "2s10s",
-                "name": "2s10s Slope",
-                "region": "US",
-                "data": slope,
-                "stats": compute_stats(slope, is_rate=False),
-                "unit": "bps",
+        # Derived slopes (bps)
+        def slope_series(key_short: str, key_long: str, label: str, region: str = "US"):
+            ds = {d["date"]: d["value"] for d in results.get(key_short, {}).get("data", [])}
+            dl = {d["date"]: d["value"] for d in results.get(key_long,  {}).get("data", [])}
+            common = sorted(set(ds) & set(dl))
+            data = [{"date": dt, "value": round((dl[dt] - ds[dt]) * 100, 1)} for dt in common]
+            results[f"{key_short[3:]}s{key_long[3:]}s"] = {
+                "key": f"{key_short[3:]}s{key_long[3:]}s",
+                "name": label, "region": region,
+                "data": data, "stats": compute_stats(data), "unit": "bps",
             }
+
+        slope_series("us_2y",  "us_10y", "2s10s Slope")
+        slope_series("us_5y",  "us_30y", "5s30s Slope")
+
+        # Derived: 10Y real rate (nominal - 10Y BEI)
+        dn = {d["date"]: d["value"] for d in results.get("us_10y",  {}).get("data", [])}
+        db = {d["date"]: d["value"] for d in results.get("bei_10y", {}).get("data", [])}
+        common_r = sorted(set(dn) & set(db))
+        real_data = [{"date": dt, "value": round(dn[dt] - db[dt], 3)} for dt in common_r]
+        results["real_10y"] = {
+            "key": "real_10y", "name": "10Y Real Rate", "region": "Real",
+            "data": real_data, "stats": compute_stats(real_data, is_rate=True),
+        }
+
+    cache_set(cache_key, results)
+    return results
+
+
+@app.get("/api/macro")
+async def get_macro(period: str = Query("3y")):
+    cache_key = f"macro_{period}"
+    if cached := cache_get(cache_key):
+        return cached
+
+    if not FRED_API_KEY:
+        raise HTTPException(500, detail="FRED_API_KEY not set")
+
+    start_date = get_start_date(period)
+    # Fetch 14 extra months so YoY transforms have enough prior data
+    dt_start = datetime.strptime(start_date, "%Y-%m-%d")
+    extended = (dt_start - timedelta(days=425)).strftime("%Y-%m-%d")
+
+    results: dict = {}
+    async with httpx.AsyncClient() as client:
+        for series in MACRO_SERIES:
+            try:
+                raw = await fred_fetch_raw(client, series["fred_id"], extended)
+                transform = series.get("transform", "level")
+                if transform == "yoy":
+                    data = [d for d in compute_yoy(raw) if d["date"] >= start_date]
+                elif transform == "mom":
+                    data = [d for d in compute_mom(raw, pct=False) if d["date"] >= start_date]
+                elif transform == "mom_pct":
+                    data = [d for d in compute_mom(raw, pct=True) if d["date"] >= start_date]
+                else:
+                    data = [d for d in raw if d["date"] >= start_date]
+                results[series["key"]] = {
+                    **series,
+                    "data": data,
+                    "stats": compute_stats(data, is_rate=True),
+                }
+            except Exception as e:
+                results[series["key"]] = {**series, "data": [], "stats": {}, "error": str(e)}
+
+    cache_set(cache_key, results)
+    return results
+
+
+@app.get("/api/commodities")
+async def get_commodities(period: str = Query("1y")):
+    cache_key = f"commodities_{period}"
+    if cached := cache_get(cache_key):
+        return cached
+
+    yf_period = {"ytd": "ytd", "1y": "1y", "3y": "3y", "5y": "5y", "10y": "10y"}.get(period, "1y")
+
+    def fetch_one(meta: dict) -> tuple[str, dict]:
+        try:
+            hist = yf.Ticker(meta["ticker"]).history(period=yf_period, auto_adjust=True)
+            if hist.empty:
+                return meta["key"], {**meta, "data": [], "stats": {}, "error": "No data"}
+            data = [
+                {"date": idx.strftime("%Y-%m-%d"), "value": round(float(row["Close"]), 4)}
+                for idx, row in hist.iterrows()
+            ]
+            current = data[-1]["value"]
+            prev    = data[-2]["value"] if len(data) >= 2 else current
+            ytd_start = datetime.now().replace(month=1, day=1).strftime("%Y-%m-%d")
+            ytd_vals  = [d for d in data if d["date"] >= ytd_start]
+            yr_vals   = [d for d in data if d["date"] >= (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")]
+            stats = {
+                "current": current,
+                "change_1d_pct":  round((current / prev - 1) * 100, 2) if prev else None,
+                "change_ytd_pct": round((current / ytd_vals[0]["value"] - 1) * 100, 2) if ytd_vals else None,
+                "change_1y_pct":  round((current / yr_vals[0]["value"]  - 1) * 100, 2) if yr_vals else None,
+            }
+            return meta["key"], {**meta, "data": data, "stats": stats}
+        except Exception as exc:
+            return meta["key"], {**meta, "data": [], "stats": {}, "error": str(exc)}
+
+    results: dict = {}
+    with concurrent.futures.ThreadPoolExecutor(max_workers=12) as ex:
+        for key, result in ex.map(fetch_one, COMMODITY_TICKERS):
+            results[key] = result
+
+    # Derived: Copper/Gold ratio (global growth proxy)
+    if "copper" in results and "gold" in results:
+        cd = {d["date"]: d["value"] for d in results["copper"].get("data", [])}
+        gd = {d["date"]: d["value"] for d in results["gold"].get("data", [])}
+        common = sorted(set(cd) & set(gd))
+        cg_data = [{"date": dt, "value": round(cd[dt] / gd[dt] * 1000, 4)} for dt in common if gd[dt]]
+        results["copper_gold"] = {
+            "key": "copper_gold", "ticker": None,
+            "name": "Copper/Gold Ratio", "unit": "×1000",
+            "category": "Derived",
+            "data": cg_data, "stats": compute_stats(cg_data, is_rate=True),
+            "note": "Copper/Gold ×1000. Rising = risk-on / global growth positive.",
+        }
+
+    cache_set(cache_key, results)
+    return results
+
+
+@app.get("/api/fx")
+async def get_fx(period: str = Query("1y")):
+    cache_key = f"fx_{period}"
+    if cached := cache_get(cache_key):
+        return cached
+
+    yf_period = {"ytd": "ytd", "1y": "1y", "3y": "3y", "5y": "5y", "10y": "10y"}.get(period, "1y")
+
+    def fetch_one(meta: dict) -> tuple[str, dict]:
+        try:
+            hist = yf.Ticker(meta["ticker"]).history(period=yf_period, auto_adjust=True)
+            if hist.empty:
+                return meta["key"], {**meta, "data": [], "stats": {}, "error": "No data"}
+            data = [
+                {"date": idx.strftime("%Y-%m-%d"), "value": round(float(row["Close"]), 5)}
+                for idx, row in hist.iterrows()
+            ]
+            current = data[-1]["value"]
+            prev    = data[-2]["value"] if len(data) >= 2 else current
+            ytd_start = datetime.now().replace(month=1, day=1).strftime("%Y-%m-%d")
+            ytd_vals  = [d for d in data if d["date"] >= ytd_start]
+            yr_vals   = [d for d in data if d["date"] >= (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")]
+            stats = {
+                "current": current,
+                "change_1d_pct":  round((current / prev - 1) * 100, 3) if prev else None,
+                "change_ytd_pct": round((current / ytd_vals[0]["value"] - 1) * 100, 2) if ytd_vals else None,
+                "change_1y_pct":  round((current / yr_vals[0]["value"]  - 1) * 100, 2) if yr_vals else None,
+            }
+            return meta["key"], {**meta, "data": data, "stats": stats}
+        except Exception as exc:
+            return meta["key"], {**meta, "data": [], "stats": {}, "error": str(exc)}
+
+    results: dict = {}
+    with concurrent.futures.ThreadPoolExecutor(max_workers=14) as ex:
+        for key, result in ex.map(fetch_one, FX_TICKERS):
+            results[key] = result
+
+    cache_set(cache_key, results)
+    return results
+
+
+@app.get("/api/fed")
+async def get_fed(period: str = Query("3y")):
+    cache_key = f"fed_{period}"
+    if cached := cache_get(cache_key):
+        return cached
+
+    if not FRED_API_KEY:
+        raise HTTPException(500, detail="FRED_API_KEY not set")
+
+    start_date = get_start_date(period)
+    results: dict = {}
+
+    async with httpx.AsyncClient() as client:
+        for series in FED_SERIES:
+            try:
+                raw = await fred_fetch_raw(client, series["fred_id"], start_date)
+                # FRED reports in millions; convert to billions
+                data = [{"date": d["date"], "value": round(d["value"] / 1000, 1)} for d in raw]
+                results[series["key"]] = {
+                    **series, "data": data,
+                    "stats": compute_stats(data, is_rate=True),
+                }
+            except Exception as e:
+                results[series["key"]] = {**series, "data": [], "stats": {}, "error": str(e)}
+
+    # Stacked composition for chart: Treasuries + MBS + Other
+    keys = ["fed_total", "fed_tsy", "fed_mbs"]
+    if all(k in results and results[k].get("data") for k in keys):
+        td = {d["date"]: d["value"] for d in results["fed_total"]["data"]}
+        ty = {d["date"]: d["value"] for d in results["fed_tsy"]["data"]}
+        mb = {d["date"]: d["value"] for d in results["fed_mbs"]["data"]}
+        common = sorted(set(td) & set(ty) & set(mb))
+        results["_stacked"] = [
+            {"date": dt, "treasuries": ty[dt], "mbs": mb[dt],
+             "other": round(td[dt] - ty[dt] - mb[dt], 1), "total": td[dt]}
+            for dt in common
+        ]
 
     cache_set(cache_key, results)
     return results
