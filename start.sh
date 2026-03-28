@@ -1,12 +1,16 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────
-#  Market Dashboard – start script
+#  Market Dashboard – start script (macOS + Linux compatible)
 # ─────────────────────────────────────────────────────────────
 set -e
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 ENV_FILE="$ROOT/backend/.env"
 
-# ── Check for FRED API key ─────────────────────────────────────
+# ── Check for FRED API key ────────────────────────────────────
+if [ ! -f "$ENV_FILE" ]; then
+  cp "$ROOT/backend/.env.example" "$ENV_FILE"
+fi
+
 CURRENT_KEY=$(grep "^FRED_API_KEY=" "$ENV_FILE" 2>/dev/null | cut -d= -f2)
 if [ -z "$CURRENT_KEY" ] || [ "$CURRENT_KEY" = "your_fred_api_key_here" ]; then
   echo ""
@@ -23,40 +27,60 @@ if [ -z "$CURRENT_KEY" ] || [ "$CURRENT_KEY" = "your_fred_api_key_here" ]; then
     echo "  No key entered. Spreads and rates won't load without it."
     echo "  (You can add it later by editing backend/.env)"
   else
-    # Write key to .env
-    sed -i "s|FRED_API_KEY=.*|FRED_API_KEY=$KEY|" "$ENV_FILE"
+    # Use Python for cross-platform .env editing (macOS sed differs from Linux)
+    python3 - <<PYEOF
+import re, pathlib
+p = pathlib.Path("$ENV_FILE")
+p.write_text(re.sub(r'FRED_API_KEY=.*', 'FRED_API_KEY=$KEY', p.read_text()))
+PYEOF
     echo "  ✓ Key saved to backend/.env"
   fi
   echo ""
 fi
 
-# ── Backend ───────────────────────────────────────────────────
-echo "▶  Starting data server (backend)..."
+# ── Python virtual environment ────────────────────────────────
+echo "▶  Checking Python dependencies..."
 cd "$ROOT/backend"
+if [ ! -d ".venv" ]; then
+  echo "  Setting up Python environment (first run only, ~1 min)..."
+  python3 -m venv .venv
+fi
 source .venv/bin/activate
+pip install -q -r requirements.txt
+echo "  ✓ Python ready"
+
+# ── Node dependencies ─────────────────────────────────────────
+echo "▶  Checking Node dependencies..."
+cd "$ROOT/frontend"
+if [ ! -d "node_modules" ]; then
+  echo "  Installing Node packages (first run only, ~1 min)..."
+  npm install --silent
+fi
+echo "  ✓ Node ready"
+
+# ── Start backend ─────────────────────────────────────────────
+echo "▶  Starting data server..."
+cd "$ROOT/backend"
 uvicorn main:app --host 127.0.0.1 --port 8000 --reload --log-level warning &
 BACKEND_PID=$!
-
-# Give backend a moment to start
 sleep 2
 
-# ── Frontend ──────────────────────────────────────────────────
-echo "▶  Starting dashboard (frontend)..."
+# ── Start frontend ────────────────────────────────────────────
+echo "▶  Starting dashboard..."
 cd "$ROOT/frontend"
 npm run dev --silent &
 FRONTEND_PID=$!
-
 sleep 2
 
 echo ""
 echo "  ┌─────────────────────────────────────────────────────┐"
 echo "  │                                                     │"
-echo "  │   Dashboard is running!                            │"
+echo "  │   Dashboard is running!                             │"
 echo "  │                                                     │"
-echo "  │   Open this in your browser:                       │"
-echo "  │   → http://localhost:5173                          │"
+echo "  │   Open this in your browser:                        │"
+echo "  │   → http://localhost:5173                           │"
 echo "  │                                                     │"
-echo "  │   Press Ctrl-C to stop                             │"
+echo "  │   Press Ctrl-C to stop                              │"
 echo "  │                                                     │"
 echo "  └─────────────────────────────────────────────────────┘"
 echo ""
