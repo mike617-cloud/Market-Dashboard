@@ -12,12 +12,15 @@ import concurrent.futures
 import os
 import time
 from datetime import datetime, timedelta
+from pathlib import Path
 
 import httpx
 import yfinance as yf
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 load_dotenv()
 
@@ -536,3 +539,21 @@ async def health():
         "timestamp": datetime.now().isoformat(),
         "cache_entries": len(_cache),
     }
+
+
+# ─── Serve React frontend (production) ───────────────────────────────────────
+# The React app is built into backend/static/ via `npm run build`.
+# FastAPI serves it here so the whole dashboard is one URL with no separate
+# frontend server needed.
+
+_static_dir = Path(__file__).parent / "static"
+
+if _static_dir.exists():
+    # Serve static assets (JS, CSS, images)
+    app.mount("/assets", StaticFiles(directory=str(_static_dir / "assets")), name="assets")
+
+    # Catch-all: serve index.html for any non-API route (supports client-side routing)
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def serve_frontend(full_path: str):
+        index = _static_dir / "index.html"
+        return FileResponse(str(index))

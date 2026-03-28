@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: market-dashboard
+    runtime: python
+    buildCommand: |
+      pip install -r backend/requirements.txt
+      cd frontend && npm install && npm run build
+    startCommand: cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: FRED_API_KEY
+        sync: false   # Render will prompt you to enter this in their dashboard
