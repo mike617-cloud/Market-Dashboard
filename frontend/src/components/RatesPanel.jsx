@@ -20,8 +20,8 @@ const RATE_GROUPS = [
       { key: 'us_5y',   label: 'UST 5Y'  },
       { key: 'us_10y',  label: 'UST 10Y' },
       { key: 'us_30y',  label: 'UST 30Y' },
-      { key: '10y_2ys', label: '2s10s'   },
-      { key: '5y_30ys', label: '5s30s'   },
+      { key: '2s10s',   label: '2s10s'   },
+      { key: '5s30s',   label: '5s30s'   },
       { key: 'de_10y',  label: 'Bund 10Y'},
       { key: 'uk_10y',  label: 'Gilt 10Y'},
       { key: 'jp_10y',  label: 'JGB 10Y' },
@@ -63,19 +63,19 @@ function RateTile({ meta, loading }) {
   if (!meta) return null
 
   const { key, name, label, data = [], stats = {} } = meta
-  const is2s10s = key === '2s10s'
+  const isBps = key === '2s10s' || key === '5s30s'
   const miniData = data.slice(-120)
-  const sparkColor = is2s10s
+  const sparkColor = isBps
     ? (stats.current >= 0 ? '#10b981' : '#f97316')
     : '#3b82f6'
 
   const formatVal = (v) => {
     if (v == null) return '—'
-    return is2s10s ? `${v > 0 ? '+' : ''}${v.toFixed(0)} bps` : `${v.toFixed(2)}%`
+    return isBps ? `${v > 0 ? '+' : ''}${v.toFixed(0)} bps` : `${v.toFixed(2)}%`
   }
 
   const changeVal = stats.change_1d
-  const changeColor = is2s10s
+  const changeColor = isBps
     ? (changeVal > 0 ? 'text-emerald-400' : changeVal < 0 ? 'text-red-400' : 'text-slate-500')
     : (changeVal > 0 ? 'text-red-400' : changeVal < 0 ? 'text-emerald-400' : 'text-slate-500')
 
@@ -87,7 +87,7 @@ function RateTile({ meta, loading }) {
       </div>
       <div className={`text-[10px] font-mono mt-0.5 ${changeColor}`}>
         {changeVal != null
-          ? `${changeVal > 0 ? '+' : ''}${is2s10s ? changeVal.toFixed(0) + ' bps' : changeVal.toFixed(2) + '%'} 1D`
+          ? `${changeVal > 0 ? '+' : ''}${isBps ? changeVal.toFixed(0) + ' bps' : changeVal.toFixed(2) + '%'} 1D`
           : '—'
         }
       </div>

@@ -87,7 +87,7 @@ SPREAD_SERIES = [
     },
     {
         "key": "us_bbb",
-        "fred_id": "BAMLC0A4CBBBEY",
+        "fred_id": "BAMLC0A4CBBB",
         "name": "US BBB",
         "short": "US BBB",
         "description": "ICE BofA BBB US Corporate Index OAS",
@@ -100,7 +100,7 @@ SPREAD_SERIES = [
     },
     {
         "key": "euro_hy",
-        "fred_id": "BAMLHE00EHY0EY",
+        "fred_id": "BAMLHE00EHYIOAS",
         "name": "Euro High Yield",
         "short": "EUR HY",
         "description": "ICE BofA Euro High Yield Index OAS",
@@ -113,7 +113,7 @@ SPREAD_SERIES = [
     },
     {
         "key": "euro_ig",
-        "fred_id": "BAMLHE00EIG0EY",
+        "fred_id": "BAMLHE00EIGIOAS",
         "name": "Euro Investment Grade",
         "short": "EUR IG",
         "description": "ICE BofA Euro Corporate Index OAS",
@@ -188,7 +188,7 @@ CDX_ETF_PROXIES = [
         "fred_oas_key": "euro_ig",
         "source": "FRED · ICE BofA",
         "color": "#7c3aed",
-        "note": "Proxy: ICE BofA Euro IG OAS (BAMLHE00EIG0EY). Real iTraxx requires Markit/Bloomberg license.",
+        "note": "Proxy: ICE BofA Euro IG OAS (BAMLHE00EIGIOAS). Real iTraxx requires Markit/Bloomberg license.",
     },
     {
         "key": "itraxx_xover",
@@ -200,7 +200,7 @@ CDX_ETF_PROXIES = [
         "fred_oas_key": "euro_hy",
         "source": "FRED · ICE BofA",
         "color": "#b45309",
-        "note": "Proxy: ICE BofA Euro HY OAS (BAMLHE00EHY0EY). Real iTraxx requires Markit/Bloomberg license.",
+        "note": "Proxy: ICE BofA Euro HY OAS (BAMLHE00EHYIOAS). Real iTraxx requires Markit/Bloomberg license.",
     },
 ]
 
@@ -545,19 +545,19 @@ async def get_rates(period: str = Query("3y")):
                 results[series["key"]] = {**series, "data": [], "stats": {}, "error": str(e)}
 
         # Derived slopes (bps)
-        def slope_series(key_short: str, key_long: str, label: str, region: str = "US"):
+        def slope_series(result_key: str, key_short: str, key_long: str, label: str, region: str = "US"):
             ds = {d["date"]: d["value"] for d in results.get(key_short, {}).get("data", [])}
             dl = {d["date"]: d["value"] for d in results.get(key_long,  {}).get("data", [])}
             common = sorted(set(ds) & set(dl))
             data = [{"date": dt, "value": round((dl[dt] - ds[dt]) * 100, 1)} for dt in common]
-            results[f"{key_short[3:]}s{key_long[3:]}s"] = {
-                "key": f"{key_short[3:]}s{key_long[3:]}s",
+            results[result_key] = {
+                "key": result_key,
                 "name": label, "region": region,
                 "data": data, "stats": compute_stats(data), "unit": "bps",
             }
 
-        slope_series("us_2y",  "us_10y", "2s10s Slope")
-        slope_series("us_5y",  "us_30y", "5s30s Slope")
+        slope_series("2s10s", "us_2y",  "us_10y", "2s10s Slope")
+        slope_series("5s30s", "us_5y",  "us_30y", "5s30s Slope")
 
         # Derived: 10Y real rate (nominal - 10Y BEI)
         dn = {d["date"]: d["value"] for d in results.get("us_10y",  {}).get("data", [])}
