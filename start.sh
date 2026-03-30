@@ -46,7 +46,7 @@ if [ ! -d ".venv" ]; then
   python3 -m venv .venv
 fi
 source .venv/bin/activate
-pip install -q -r requirements.txt
+pip install -q --upgrade -r requirements.txt
 echo "  ✓ Python ready"
 
 # ── Node dependencies ─────────────────────────────────────────

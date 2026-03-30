@@ -480,21 +480,34 @@ async def get_equities(period: str = Query("1y")):
     if cached := cache_get(cache_key):
         return cached
 
-    # yfinance period strings
     yf_period = {"ytd": "ytd", "1y": "1y", "3y": "3y", "5y": "5y", "10y": "10y"}.get(period, "1y")
+    ticker_list = [m["ticker"] for m in EQUITY_TICKERS]
+    meta_by_ticker = {m["ticker"]: m for m in EQUITY_TICKERS}
 
-    def fetch_one(meta: dict) -> tuple[str, dict]:
-        for attempt in range(3):
+    def do_download():
+        import pandas as pd
+        # Single batch download — one HTTP call for all tickers
+        df = yf.download(ticker_list, period=yf_period, auto_adjust=True, threads=True, timeout=30)
+        if df.empty:
+            return {}
+        # yf.download returns MultiIndex columns (metric, ticker) for multiple tickers
+        is_multi = isinstance(df.columns, pd.MultiIndex)
+        out: dict = {}
+        for meta in EQUITY_TICKERS:
+            ticker = meta["ticker"]
             try:
-                hist = yf.Ticker(meta["ticker"]).history(period=yf_period, auto_adjust=True)
-                if hist.empty:
-                    return meta["key"], {**meta, "data": [], "stats": {}, "error": "No data"}
+                if is_multi:
+                    close = df["Close"][ticker].dropna()
+                else:
+                    # Single ticker edge case
+                    close = df["Close"].dropna()
+                if close.empty:
+                    out[meta["key"]] = {**meta, "data": [], "stats": {}, "error": "No data"}
+                    continue
                 data = [
-                    {"date": idx.strftime("%Y-%m-%d"), "value": round(float(row["Close"]), 4)}
-                    for idx, row in hist.iterrows()
+                    {"date": idx.strftime("%Y-%m-%d"), "value": round(float(v), 4)}
+                    for idx, v in close.items()
                 ]
-                if not data:
-                    return meta["key"], {**meta, "data": [], "stats": {}}
                 current = data[-1]["value"]
                 prev = data[-2]["value"] if len(data) >= 2 else current
                 ytd_start = datetime.now().replace(month=1, day=1).strftime("%Y-%m-%d")
@@ -508,17 +521,13 @@ async def get_equities(period: str = Query("1y")):
                     "change_ytd_pct": round((current / ytd_vals[0]["value"] - 1) * 100, 2) if ytd_vals else None,
                     "change_1y_pct": round((current / yr_vals[0]["value"] - 1) * 100, 2) if yr_vals else None,
                 }
-                return meta["key"], {**meta, "data": data, "stats": stats}
+                out[meta["key"]] = {**meta, "data": data, "stats": stats}
             except Exception as exc:
-                if attempt < 2:
-                    time.sleep(2 ** attempt)
-                else:
-                    return meta["key"], {**meta, "data": [], "stats": {}, "error": str(exc)}
+                out[meta["key"]] = {**meta, "data": [], "stats": {}, "error": str(exc)}
+        return out
 
-    results: dict = {}
-    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as ex:
-        for key, result in ex.map(lambda m: fetch_one(m), EQUITY_TICKERS):
-            results[key] = result
+    loop = asyncio.get_event_loop()
+    results = await loop.run_in_executor(None, do_download)
 
     cache_set(cache_key, results)
     return results
@@ -624,39 +633,44 @@ async def get_commodities(period: str = Query("1y")):
         return cached
 
     yf_period = {"ytd": "ytd", "1y": "1y", "3y": "3y", "5y": "5y", "10y": "10y"}.get(period, "1y")
+    ticker_list = [m["ticker"] for m in COMMODITY_TICKERS]
 
-    def fetch_one(meta: dict) -> tuple[str, dict]:
-        for attempt in range(3):
+    def do_download():
+        import pandas as pd
+        df = yf.download(ticker_list, period=yf_period, auto_adjust=True, threads=True, timeout=30)
+        if df.empty:
+            return {}
+        is_multi = isinstance(df.columns, pd.MultiIndex)
+        out: dict = {}
+        for meta in COMMODITY_TICKERS:
+            ticker = meta["ticker"]
             try:
-                hist = yf.Ticker(meta["ticker"]).history(period=yf_period, auto_adjust=True)
-                if hist.empty:
-                    return meta["key"], {**meta, "data": [], "stats": {}, "error": "No data"}
+                close = df["Close"][ticker].dropna() if is_multi else df["Close"].dropna()
+                if close.empty:
+                    out[meta["key"]] = {**meta, "data": [], "stats": {}, "error": "No data"}
+                    continue
                 data = [
-                    {"date": idx.strftime("%Y-%m-%d"), "value": round(float(row["Close"]), 4)}
-                    for idx, row in hist.iterrows()
+                    {"date": idx.strftime("%Y-%m-%d"), "value": round(float(v), 4)}
+                    for idx, v in close.items()
                 ]
                 current = data[-1]["value"]
-                prev    = data[-2]["value"] if len(data) >= 2 else current
+                prev = data[-2]["value"] if len(data) >= 2 else current
                 ytd_start = datetime.now().replace(month=1, day=1).strftime("%Y-%m-%d")
-                ytd_vals  = [d for d in data if d["date"] >= ytd_start]
-                yr_vals   = [d for d in data if d["date"] >= (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")]
+                ytd_vals = [d for d in data if d["date"] >= ytd_start]
+                yr_vals = [d for d in data if d["date"] >= (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")]
                 stats = {
                     "current": current,
-                    "change_1d_pct":  round((current / prev - 1) * 100, 2) if prev else None,
+                    "change_1d_pct": round((current / prev - 1) * 100, 2) if prev else None,
                     "change_ytd_pct": round((current / ytd_vals[0]["value"] - 1) * 100, 2) if ytd_vals else None,
-                    "change_1y_pct":  round((current / yr_vals[0]["value"]  - 1) * 100, 2) if yr_vals else None,
+                    "change_1y_pct": round((current / yr_vals[0]["value"] - 1) * 100, 2) if yr_vals else None,
                 }
-                return meta["key"], {**meta, "data": data, "stats": stats}
+                out[meta["key"]] = {**meta, "data": data, "stats": stats}
             except Exception as exc:
-                if attempt < 2:
-                    time.sleep(2 ** attempt)
-                else:
-                    return meta["key"], {**meta, "data": [], "stats": {}, "error": str(exc)}
+                out[meta["key"]] = {**meta, "data": [], "stats": {}, "error": str(exc)}
+        return out
 
-    results: dict = {}
-    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as ex:
-        for key, result in ex.map(fetch_one, COMMODITY_TICKERS):
-            results[key] = result
+    loop = asyncio.get_event_loop()
+    results = await loop.run_in_executor(None, do_download)
 
     # Derived: Copper/Gold ratio (global growth proxy)
     if "copper" in results and "gold" in results:
@@ -684,39 +698,44 @@ async def get_fx(period: str = Query("1y")):
 
     # FX pairs on Yahoo Finance only reliably support up to 5Y history
     yf_period = {"ytd": "ytd", "1y": "1y", "3y": "3y", "5y": "5y", "10y": "5y"}.get(period, "1y")
+    ticker_list = [m["ticker"] for m in FX_TICKERS]
 
-    def fetch_one(meta: dict) -> tuple[str, dict]:
-        for attempt in range(3):
+    def do_download():
+        import pandas as pd
+        df = yf.download(ticker_list, period=yf_period, auto_adjust=True, threads=True, timeout=30)
+        if df.empty:
+            return {}
+        is_multi = isinstance(df.columns, pd.MultiIndex)
+        out: dict = {}
+        for meta in FX_TICKERS:
+            ticker = meta["ticker"]
             try:
-                hist = yf.Ticker(meta["ticker"]).history(period=yf_period, auto_adjust=True)
-                if hist.empty:
-                    return meta["key"], {**meta, "data": [], "stats": {}, "error": "No data"}
+                close = df["Close"][ticker].dropna() if is_multi else df["Close"].dropna()
+                if close.empty:
+                    out[meta["key"]] = {**meta, "data": [], "stats": {}, "error": "No data"}
+                    continue
                 data = [
-                    {"date": idx.strftime("%Y-%m-%d"), "value": round(float(row["Close"]), 5)}
-                    for idx, row in hist.iterrows()
+                    {"date": idx.strftime("%Y-%m-%d"), "value": round(float(v), 5)}
+                    for idx, v in close.items()
                 ]
                 current = data[-1]["value"]
-                prev    = data[-2]["value"] if len(data) >= 2 else current
+                prev = data[-2]["value"] if len(data) >= 2 else current
                 ytd_start = datetime.now().replace(month=1, day=1).strftime("%Y-%m-%d")
-                ytd_vals  = [d for d in data if d["date"] >= ytd_start]
-                yr_vals   = [d for d in data if d["date"] >= (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")]
+                ytd_vals = [d for d in data if d["date"] >= ytd_start]
+                yr_vals = [d for d in data if d["date"] >= (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")]
                 stats = {
                     "current": current,
-                    "change_1d_pct":  round((current / prev - 1) * 100, 3) if prev else None,
+                    "change_1d_pct": round((current / prev - 1) * 100, 3) if prev else None,
                     "change_ytd_pct": round((current / ytd_vals[0]["value"] - 1) * 100, 2) if ytd_vals else None,
-                    "change_1y_pct":  round((current / yr_vals[0]["value"]  - 1) * 100, 2) if yr_vals else None,
+                    "change_1y_pct": round((current / yr_vals[0]["value"] - 1) * 100, 2) if yr_vals else None,
                 }
-                return meta["key"], {**meta, "data": data, "stats": stats}
+                out[meta["key"]] = {**meta, "data": data, "stats": stats}
             except Exception as exc:
-                if attempt < 2:
-                    time.sleep(2 ** attempt)
-                else:
-                    return meta["key"], {**meta, "data": [], "stats": {}, "error": str(exc)}
+                out[meta["key"]] = {**meta, "data": [], "stats": {}, "error": str(exc)}
+        return out
 
-    results: dict = {}
-    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as ex:
-        for key, result in ex.map(fetch_one, FX_TICKERS):
-            results[key] = result
+    loop = asyncio.get_event_loop()
+    results = await loop.run_in_executor(None, do_download)
 
     cache_set(cache_key, results)
     return results

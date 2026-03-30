@@ -146,10 +146,18 @@ export default function EquityPanel({ data, loading, onSelect }) {
         <tbody>
           {loading || !data
             ? Array.from({ length: 12 }, (_, i) => <SkeletonRow key={i} />)
-            : items.map((item) =>
-                item.stats ? (
-                  <EquityRow key={item.key} item={item} onSelect={onSelect} />
-                ) : null
+            : items.length > 0 && items.some(i => i.stats && Object.keys(i.stats).length)
+              ? items.map((item) =>
+                  item.stats ? (
+                    <EquityRow key={item.key} item={item} onSelect={onSelect} />
+                  ) : null
+                )
+              : (
+                <tr>
+                  <td colSpan={6} className="py-8 text-center text-slate-500 text-sm">
+                    Equity data unavailable — Yahoo Finance may be temporarily down. Try refreshing.
+                  </td>
+                </tr>
               )
           }
         </tbody>
