@@ -484,35 +484,39 @@ async def get_equities(period: str = Query("1y")):
     yf_period = {"ytd": "ytd", "1y": "1y", "3y": "3y", "5y": "5y", "10y": "10y"}.get(period, "1y")
 
     def fetch_one(meta: dict) -> tuple[str, dict]:
-        try:
-            hist = yf.Ticker(meta["ticker"]).history(period=yf_period, auto_adjust=True)
-            if hist.empty:
-                return meta["key"], {**meta, "data": [], "stats": {}, "error": "No data"}
-            data = [
-                {"date": idx.strftime("%Y-%m-%d"), "value": round(float(row["Close"]), 4)}
-                for idx, row in hist.iterrows()
-            ]
-            if not data:
-                return meta["key"], {**meta, "data": [], "stats": {}}
-            current = data[-1]["value"]
-            prev = data[-2]["value"] if len(data) >= 2 else current
-            ytd_start = datetime.now().replace(month=1, day=1).strftime("%Y-%m-%d")
-            ytd_vals = [d for d in data if d["date"] >= ytd_start]
-            one_yr_ago = (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")
-            yr_vals = [d for d in data if d["date"] >= one_yr_ago]
-            stats = {
-                "current": current,
-                "change_1d": round(current - prev, 4),
-                "change_1d_pct": round((current / prev - 1) * 100, 2) if prev else None,
-                "change_ytd_pct": round((current / ytd_vals[0]["value"] - 1) * 100, 2) if ytd_vals else None,
-                "change_1y_pct": round((current / yr_vals[0]["value"] - 1) * 100, 2) if yr_vals else None,
-            }
-            return meta["key"], {**meta, "data": data, "stats": stats}
-        except Exception as exc:
-            return meta["key"], {**meta, "data": [], "stats": {}, "error": str(exc)}
+        for attempt in range(3):
+            try:
+                hist = yf.Ticker(meta["ticker"]).history(period=yf_period, auto_adjust=True)
+                if hist.empty:
+                    return meta["key"], {**meta, "data": [], "stats": {}, "error": "No data"}
+                data = [
+                    {"date": idx.strftime("%Y-%m-%d"), "value": round(float(row["Close"]), 4)}
+                    for idx, row in hist.iterrows()
+                ]
+                if not data:
+                    return meta["key"], {**meta, "data": [], "stats": {}}
+                current = data[-1]["value"]
+                prev = data[-2]["value"] if len(data) >= 2 else current
+                ytd_start = datetime.now().replace(month=1, day=1).strftime("%Y-%m-%d")
+                ytd_vals = [d for d in data if d["date"] >= ytd_start]
+                one_yr_ago = (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")
+                yr_vals = [d for d in data if d["date"] >= one_yr_ago]
+                stats = {
+                    "current": current,
+                    "change_1d": round(current - prev, 4),
+                    "change_1d_pct": round((current / prev - 1) * 100, 2) if prev else None,
+                    "change_ytd_pct": round((current / ytd_vals[0]["value"] - 1) * 100, 2) if ytd_vals else None,
+                    "change_1y_pct": round((current / yr_vals[0]["value"] - 1) * 100, 2) if yr_vals else None,
+                }
+                return meta["key"], {**meta, "data": data, "stats": stats}
+            except Exception as exc:
+                if attempt < 2:
+                    time.sleep(2 ** attempt)
+                else:
+                    return meta["key"], {**meta, "data": [], "stats": {}, "error": str(exc)}
 
     results: dict = {}
-    with concurrent.futures.ThreadPoolExecutor(max_workers=16) as ex:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as ex:
         for key, result in ex.map(lambda m: fetch_one(m), EQUITY_TICKERS):
             results[key] = result
 
@@ -622,31 +626,35 @@ async def get_commodities(period: str = Query("1y")):
     yf_period = {"ytd": "ytd", "1y": "1y", "3y": "3y", "5y": "5y", "10y": "10y"}.get(period, "1y")
 
     def fetch_one(meta: dict) -> tuple[str, dict]:
-        try:
-            hist = yf.Ticker(meta["ticker"]).history(period=yf_period, auto_adjust=True)
-            if hist.empty:
-                return meta["key"], {**meta, "data": [], "stats": {}, "error": "No data"}
-            data = [
-                {"date": idx.strftime("%Y-%m-%d"), "value": round(float(row["Close"]), 4)}
-                for idx, row in hist.iterrows()
-            ]
-            current = data[-1]["value"]
-            prev    = data[-2]["value"] if len(data) >= 2 else current
-            ytd_start = datetime.now().replace(month=1, day=1).strftime("%Y-%m-%d")
-            ytd_vals  = [d for d in data if d["date"] >= ytd_start]
-            yr_vals   = [d for d in data if d["date"] >= (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")]
-            stats = {
-                "current": current,
-                "change_1d_pct":  round((current / prev - 1) * 100, 2) if prev else None,
-                "change_ytd_pct": round((current / ytd_vals[0]["value"] - 1) * 100, 2) if ytd_vals else None,
-                "change_1y_pct":  round((current / yr_vals[0]["value"]  - 1) * 100, 2) if yr_vals else None,
-            }
-            return meta["key"], {**meta, "data": data, "stats": stats}
-        except Exception as exc:
-            return meta["key"], {**meta, "data": [], "stats": {}, "error": str(exc)}
+        for attempt in range(3):
+            try:
+                hist = yf.Ticker(meta["ticker"]).history(period=yf_period, auto_adjust=True)
+                if hist.empty:
+                    return meta["key"], {**meta, "data": [], "stats": {}, "error": "No data"}
+                data = [
+                    {"date": idx.strftime("%Y-%m-%d"), "value": round(float(row["Close"]), 4)}
+                    for idx, row in hist.iterrows()
+                ]
+                current = data[-1]["value"]
+                prev    = data[-2]["value"] if len(data) >= 2 else current
+                ytd_start = datetime.now().replace(month=1, day=1).strftime("%Y-%m-%d")
+                ytd_vals  = [d for d in data if d["date"] >= ytd_start]
+                yr_vals   = [d for d in data if d["date"] >= (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")]
+                stats = {
+                    "current": current,
+                    "change_1d_pct":  round((current / prev - 1) * 100, 2) if prev else None,
+                    "change_ytd_pct": round((current / ytd_vals[0]["value"] - 1) * 100, 2) if ytd_vals else None,
+                    "change_1y_pct":  round((current / yr_vals[0]["value"]  - 1) * 100, 2) if yr_vals else None,
+                }
+                return meta["key"], {**meta, "data": data, "stats": stats}
+            except Exception as exc:
+                if attempt < 2:
+                    time.sleep(2 ** attempt)
+                else:
+                    return meta["key"], {**meta, "data": [], "stats": {}, "error": str(exc)}
 
     results: dict = {}
-    with concurrent.futures.ThreadPoolExecutor(max_workers=12) as ex:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as ex:
         for key, result in ex.map(fetch_one, COMMODITY_TICKERS):
             results[key] = result
 
@@ -678,31 +686,35 @@ async def get_fx(period: str = Query("1y")):
     yf_period = {"ytd": "ytd", "1y": "1y", "3y": "3y", "5y": "5y", "10y": "5y"}.get(period, "1y")
 
     def fetch_one(meta: dict) -> tuple[str, dict]:
-        try:
-            hist = yf.Ticker(meta["ticker"]).history(period=yf_period, auto_adjust=True)
-            if hist.empty:
-                return meta["key"], {**meta, "data": [], "stats": {}, "error": "No data"}
-            data = [
-                {"date": idx.strftime("%Y-%m-%d"), "value": round(float(row["Close"]), 5)}
-                for idx, row in hist.iterrows()
-            ]
-            current = data[-1]["value"]
-            prev    = data[-2]["value"] if len(data) >= 2 else current
-            ytd_start = datetime.now().replace(month=1, day=1).strftime("%Y-%m-%d")
-            ytd_vals  = [d for d in data if d["date"] >= ytd_start]
-            yr_vals   = [d for d in data if d["date"] >= (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")]
-            stats = {
-                "current": current,
-                "change_1d_pct":  round((current / prev - 1) * 100, 3) if prev else None,
-                "change_ytd_pct": round((current / ytd_vals[0]["value"] - 1) * 100, 2) if ytd_vals else None,
-                "change_1y_pct":  round((current / yr_vals[0]["value"]  - 1) * 100, 2) if yr_vals else None,
-            }
-            return meta["key"], {**meta, "data": data, "stats": stats}
-        except Exception as exc:
-            return meta["key"], {**meta, "data": [], "stats": {}, "error": str(exc)}
+        for attempt in range(3):
+            try:
+                hist = yf.Ticker(meta["ticker"]).history(period=yf_period, auto_adjust=True)
+                if hist.empty:
+                    return meta["key"], {**meta, "data": [], "stats": {}, "error": "No data"}
+                data = [
+                    {"date": idx.strftime("%Y-%m-%d"), "value": round(float(row["Close"]), 5)}
+                    for idx, row in hist.iterrows()
+                ]
+                current = data[-1]["value"]
+                prev    = data[-2]["value"] if len(data) >= 2 else current
+                ytd_start = datetime.now().replace(month=1, day=1).strftime("%Y-%m-%d")
+                ytd_vals  = [d for d in data if d["date"] >= ytd_start]
+                yr_vals   = [d for d in data if d["date"] >= (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")]
+                stats = {
+                    "current": current,
+                    "change_1d_pct":  round((current / prev - 1) * 100, 3) if prev else None,
+                    "change_ytd_pct": round((current / ytd_vals[0]["value"] - 1) * 100, 2) if ytd_vals else None,
+                    "change_1y_pct":  round((current / yr_vals[0]["value"]  - 1) * 100, 2) if yr_vals else None,
+                }
+                return meta["key"], {**meta, "data": data, "stats": stats}
+            except Exception as exc:
+                if attempt < 2:
+                    time.sleep(2 ** attempt)
+                else:
+                    return meta["key"], {**meta, "data": [], "stats": {}, "error": str(exc)}
 
     results: dict = {}
-    with concurrent.futures.ThreadPoolExecutor(max_workers=14) as ex:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as ex:
         for key, result in ex.map(fetch_one, FX_TICKERS):
             results[key] = result
 
