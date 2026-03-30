@@ -674,7 +674,8 @@ async def get_fx(period: str = Query("1y")):
     if cached := cache_get(cache_key):
         return cached
 
-    yf_period = {"ytd": "ytd", "1y": "1y", "3y": "3y", "5y": "5y", "10y": "10y"}.get(period, "1y")
+    # FX pairs on Yahoo Finance only reliably support up to 5Y history
+    yf_period = {"ytd": "ytd", "1y": "1y", "3y": "3y", "5y": "5y", "10y": "5y"}.get(period, "1y")
 
     def fetch_one(meta: dict) -> tuple[str, dict]:
         try:
@@ -788,17 +789,20 @@ async def get_cdx(period: str = Query("3y")):
 
     # Get current ETF yield data (sync, run in thread)
     def get_etf_info(ticker: str) -> dict:
-        try:
-            info = yf.Ticker(ticker).info
-            return {
-                "sec_yield": info.get("yield"),
-                "trailing_yield": info.get("trailingAnnualDividendYield"),
-                "long_name": info.get("longName", ticker),
-                "nav": info.get("navPrice"),
-                "aum": info.get("totalAssets"),
-            }
-        except Exception:
-            return {}
+        for attempt in range(3):
+            try:
+                info = yf.Ticker(ticker).info
+                return {
+                    "sec_yield": info.get("yield"),
+                    "trailing_yield": info.get("trailingAnnualDividendYield"),
+                    "long_name": info.get("longName", ticker),
+                    "nav": info.get("navPrice"),
+                    "aum": info.get("totalAssets"),
+                }
+            except Exception:
+                if attempt < 2:
+                    time.sleep(2 ** attempt)
+        return {}
 
     with concurrent.futures.ThreadPoolExecutor() as ex:
         etf_infos = {
