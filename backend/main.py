@@ -205,27 +205,27 @@ CDX_ETF_PROXIES = [
 ]
 
 EQUITY_TICKERS = [
-    # US
-    {"key": "sp500",   "ticker": "^GSPC",    "name": "S&P 500",          "region": "US",         "is_etf": False},
-    {"key": "nasdaq",  "ticker": "^IXIC",    "name": "NASDAQ Composite", "region": "US",         "is_etf": False},
-    {"key": "russell", "ticker": "^RUT",     "name": "Russell 2000",     "region": "US",         "is_etf": False},
-    {"key": "dow",     "ticker": "^DJI",     "name": "Dow Jones",        "region": "US",         "is_etf": False},
+    # US — SP500/DJIA/NASDAQ/VIX fetched from FRED; others from yfinance
+    {"key": "sp500",   "ticker": "^GSPC",    "fred_id": "SP500",      "name": "S&P 500",          "region": "US",         "is_etf": False},
+    {"key": "nasdaq",  "ticker": "^IXIC",    "fred_id": "NASDAQCOM",  "name": "NASDAQ Composite", "region": "US",         "is_etf": False},
+    {"key": "russell", "ticker": "^RUT",     "fred_id": None,         "name": "Russell 2000",     "region": "US",         "is_etf": False},
+    {"key": "dow",     "ticker": "^DJI",     "fred_id": "DJIA",       "name": "Dow Jones",        "region": "US",         "is_etf": False},
     # Europe
-    {"key": "stoxx50", "ticker": "^STOXX50E","name": "Euro Stoxx 50",    "region": "Europe",     "is_etf": False},
-    {"key": "dax",     "ticker": "^GDAXI",   "name": "DAX",              "region": "Europe",     "is_etf": False},
-    {"key": "ftse",    "ticker": "^FTSE",    "name": "FTSE 100",         "region": "UK",         "is_etf": False},
+    {"key": "stoxx50", "ticker": "^STOXX50E","fred_id": None,         "name": "Euro Stoxx 50",    "region": "Europe",     "is_etf": False},
+    {"key": "dax",     "ticker": "^GDAXI",   "fred_id": None,         "name": "DAX",              "region": "Europe",     "is_etf": False},
+    {"key": "ftse",    "ticker": "^FTSE",    "fred_id": None,         "name": "FTSE 100",         "region": "UK",         "is_etf": False},
     {"key": "cac",     "ticker": "^FCHI",    "name": "CAC 40",           "region": "Europe",     "is_etf": False},
     # Asia-Pacific
-    {"key": "nikkei",  "ticker": "^N225",    "name": "Nikkei 225",       "region": "Asia",       "is_etf": False},
-    {"key": "hangseng","ticker": "^HSI",     "name": "Hang Seng",        "region": "Asia",       "is_etf": False},
-    {"key": "kospi",   "ticker": "^KS11",    "name": "KOSPI",            "region": "Asia",       "is_etf": False},
-    {"key": "asx200",  "ticker": "^AXJO",    "name": "ASX 200",          "region": "Asia",       "is_etf": False},
+    {"key": "nikkei",  "ticker": "^N225",    "fred_id": None, "name": "Nikkei 225",       "region": "Asia",       "is_etf": False},
+    {"key": "hangseng","ticker": "^HSI",     "fred_id": None, "name": "Hang Seng",        "region": "Asia",       "is_etf": False},
+    {"key": "kospi",   "ticker": "^KS11",    "fred_id": None, "name": "KOSPI",            "region": "Asia",       "is_etf": False},
+    {"key": "asx200",  "ticker": "^AXJO",    "fred_id": None, "name": "ASX 200",          "region": "Asia",       "is_etf": False},
     # EM / Global
-    {"key": "msci_em", "ticker": "EEM",      "name": "MSCI EM",          "region": "EM",         "is_etf": True},
-    {"key": "msci_w",  "ticker": "URTH",     "name": "MSCI World",       "region": "Global",     "is_etf": True},
+    {"key": "msci_em", "ticker": "EEM",      "fred_id": None, "name": "MSCI EM",          "region": "EM",         "is_etf": True},
+    {"key": "msci_w",  "ticker": "URTH",     "fred_id": None, "name": "MSCI World",       "region": "Global",     "is_etf": True},
     # Volatility
-    {"key": "vix",     "ticker": "^VIX",     "name": "VIX",              "region": "Volatility", "is_etf": False},
-    {"key": "vstoxx",  "ticker": "^V2TX",    "name": "VSTOXX",           "region": "Volatility", "is_etf": False},
+    {"key": "vix",     "ticker": "^VIX",     "fred_id": "VIXCLS", "name": "VIX",          "region": "Volatility", "is_etf": False},
+    {"key": "vstoxx",  "ticker": "^V2TX",    "fred_id": None,     "name": "VSTOXX",       "region": "Volatility", "is_etf": False},
 ]
 
 RATE_SERIES = [
@@ -481,53 +481,76 @@ async def get_equities(period: str = Query("1y")):
         return cached
 
     yf_period = {"ytd": "ytd", "1y": "1y", "3y": "3y", "5y": "5y", "10y": "10y"}.get(period, "1y")
-    ticker_list = [m["ticker"] for m in EQUITY_TICKERS]
-    meta_by_ticker = {m["ticker"]: m for m in EQUITY_TICKERS}
+    start_date = get_start_date(period)
 
-    def do_download():
-        import pandas as pd
-        # Single batch download — one HTTP call for all tickers
-        df = yf.download(ticker_list, period=yf_period, auto_adjust=True, threads=True, timeout=30)
-        if df.empty:
+    fred_tickers  = [m for m in EQUITY_TICKERS if m.get("fred_id")]
+    yf_tickers    = [m for m in EQUITY_TICKERS if not m.get("fred_id")]
+    results: dict = {}
+
+    def _make_stats(data: list[dict]) -> dict:
+        if not data:
             return {}
-        # yf.download returns MultiIndex columns (metric, ticker) for multiple tickers
-        is_multi = isinstance(df.columns, pd.MultiIndex)
-        out: dict = {}
-        for meta in EQUITY_TICKERS:
-            ticker = meta["ticker"]
-            try:
-                if is_multi:
-                    close = df["Close"][ticker].dropna()
-                else:
-                    # Single ticker edge case
-                    close = df["Close"].dropna()
-                if close.empty:
-                    out[meta["key"]] = {**meta, "data": [], "stats": {}, "error": "No data"}
-                    continue
-                data = [
-                    {"date": idx.strftime("%Y-%m-%d"), "value": round(float(v), 4)}
-                    for idx, v in close.items()
-                ]
-                current = data[-1]["value"]
-                prev = data[-2]["value"] if len(data) >= 2 else current
-                ytd_start = datetime.now().replace(month=1, day=1).strftime("%Y-%m-%d")
-                ytd_vals = [d for d in data if d["date"] >= ytd_start]
-                one_yr_ago = (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")
-                yr_vals = [d for d in data if d["date"] >= one_yr_ago]
-                stats = {
-                    "current": current,
-                    "change_1d": round(current - prev, 4),
-                    "change_1d_pct": round((current / prev - 1) * 100, 2) if prev else None,
-                    "change_ytd_pct": round((current / ytd_vals[0]["value"] - 1) * 100, 2) if ytd_vals else None,
-                    "change_1y_pct": round((current / yr_vals[0]["value"] - 1) * 100, 2) if yr_vals else None,
-                }
-                out[meta["key"]] = {**meta, "data": data, "stats": stats}
-            except Exception as exc:
-                out[meta["key"]] = {**meta, "data": [], "stats": {}, "error": str(exc)}
-        return out
+        current = data[-1]["value"]
+        prev    = data[-2]["value"] if len(data) >= 2 else current
+        ytd_start  = datetime.now().replace(month=1, day=1).strftime("%Y-%m-%d")
+        one_yr_ago = (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")
+        ytd_vals = [d for d in data if d["date"] >= ytd_start]
+        yr_vals  = [d for d in data if d["date"] >= one_yr_ago]
+        return {
+            "current":       round(current, 2),
+            "change_1d":     round(current - prev, 2),
+            "change_1d_pct": round((current / prev - 1) * 100, 2) if prev else None,
+            "change_ytd_pct": round((current / ytd_vals[0]["value"] - 1) * 100, 2) if ytd_vals else None,
+            "change_1y_pct":  round((current / yr_vals[0]["value"]  - 1) * 100, 2) if yr_vals else None,
+        }
 
-    loop = asyncio.get_event_loop()
-    results = await loop.run_in_executor(None, do_download)
+    # ── 1. Fetch FRED-sourced equities (SP500, DJIA, NASDAQCOM, VIXCLS) ────────
+    if fred_tickers and FRED_API_KEY:
+        async with httpx.AsyncClient() as client:
+            for meta in fred_tickers:
+                try:
+                    data = await fred_fetch_raw(client, meta["fred_id"], start_date)
+                    results[meta["key"]] = {
+                        **meta, "data": data,
+                        "stats": _make_stats(data),
+                        "source": "FRED",
+                    }
+                except Exception as exc:
+                    results[meta["key"]] = {**meta, "data": [], "stats": {}, "error": str(exc)}
+
+    # ── 2. Fetch yfinance-sourced equities (international + Russell 2000) ───────
+    def fetch_yf(meta: dict) -> tuple[str, dict]:
+        for attempt in range(3):
+            try:
+                hist = yf.Ticker(meta["ticker"]).history(period=yf_period, auto_adjust=True)
+                if hist.empty:
+                    return meta["key"], {**meta, "data": [], "stats": {}, "error": "No data"}
+                data = [
+                    {"date": idx.strftime("%Y-%m-%d"), "value": round(float(row["Close"]), 4)}
+                    for idx, row in hist.iterrows()
+                ]
+                return meta["key"], {**meta, "data": data, "stats": _make_stats(data), "source": "Yahoo Finance"}
+            except Exception as exc:
+                if attempt < 2:
+                    time.sleep(1.5 ** attempt)
+                else:
+                    return meta["key"], {**meta, "data": [], "stats": {}, "error": str(exc)}
+
+    if yf_tickers:
+        loop = asyncio.get_running_loop()
+        aws = [loop.run_in_executor(None, fetch_yf, m) for m in yf_tickers]
+        done, pending = await asyncio.wait(aws, timeout=45)
+        for pend in pending:
+            pend.cancel()
+        for fut in done:
+            try:
+                key, result = fut.result()
+                results[key] = result
+            except Exception:
+                pass
+        for meta in yf_tickers:
+            if meta["key"] not in results:
+                results[meta["key"]] = {**meta, "data": [], "stats": {}, "error": "Timeout"}
 
     cache_set(cache_key, results)
     return results
