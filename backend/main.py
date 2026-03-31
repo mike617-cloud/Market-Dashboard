@@ -140,9 +140,9 @@ SPREAD_SERIES = [
     {
         "key": "em_sovereign",
         "fred_id": "BAMLEMPBPUBSICRPIOAS",
-        "name": "EM Sovereign",
-        "short": "EM Sov",
-        "description": "ICE BofA EM Public Sector Crossover OAS",
+        "name": "EM Public Sector",
+        "short": "EM PubSec",
+        "description": "ICE BofA EM Public Sector Issuers Corporate Plus OAS (quasi-sovereign)",
         "source": "FRED · ICE BofA",
         "color": "#06b6d4",
         "category": "em",
@@ -216,7 +216,7 @@ EQUITY_TICKERS = [
     {"key": "ftse",    "ticker": "^FTSE",    "fred_id": None,         "name": "FTSE 100",         "region": "UK",         "is_etf": False},
     {"key": "cac",     "ticker": "^FCHI",    "name": "CAC 40",           "region": "Europe",     "is_etf": False},
     # Asia-Pacific
-    {"key": "nikkei",  "ticker": "^N225",    "fred_id": None, "name": "Nikkei 225",       "region": "Asia",       "is_etf": False},
+    {"key": "nikkei",  "ticker": "^N225",    "fred_id": "NIKKEI225", "name": "Nikkei 225",   "region": "Asia",       "is_etf": False},
     {"key": "hangseng","ticker": "^HSI",     "fred_id": None, "name": "Hang Seng",        "region": "Asia",       "is_etf": False},
     {"key": "kospi",   "ticker": "^KS11",    "fred_id": None, "name": "KOSPI",            "region": "Asia",       "is_etf": False},
     {"key": "asx200",  "ticker": "^AXJO",    "fred_id": None, "name": "ASX 200",          "region": "Asia",       "is_etf": False},
@@ -311,7 +311,7 @@ FX_TICKERS = [
 FED_SERIES = [
     {"key": "fed_total",    "fred_id": "WALCL",   "name": "Total Assets",     "unit": "$B"},
     {"key": "fed_tsy",      "fred_id": "TREAST",  "name": "Treasuries",       "unit": "$B"},
-    {"key": "fed_mbs",      "fred_id": "MBST",    "name": "MBS Holdings",     "unit": "$B"},
+    {"key": "fed_mbs",      "fred_id": "WSHOMCB", "name": "MBS Holdings",     "unit": "$B"},
     {"key": "fed_revrepo",  "fred_id": "WLRRAL",  "name": "Reverse Repo",     "unit": "$B"},
     {"key": "fed_reserves", "fred_id": "WRESBAL", "name": "Reserve Balances", "unit": "$B"},
     {"key": "m2",           "fred_id": "M2SL",    "name": "M2 Money Supply",  "unit": "$B"},
@@ -692,7 +692,7 @@ async def get_commodities(period: str = Query("1y")):
                 out[meta["key"]] = {**meta, "data": [], "stats": {}, "error": str(exc)}
         return out
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     results = await loop.run_in_executor(None, do_download)
 
     # Derived: Copper/Gold ratio (global growth proxy)
@@ -757,7 +757,7 @@ async def get_fx(period: str = Query("1y")):
                 out[meta["key"]] = {**meta, "data": [], "stats": {}, "error": str(exc)}
         return out
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     results = await loop.run_in_executor(None, do_download)
 
     cache_set(cache_key, results)
