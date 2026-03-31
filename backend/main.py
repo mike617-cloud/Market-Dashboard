@@ -267,7 +267,7 @@ MACRO_SERIES = [
     {"key": "nfp",          "fred_id": "PAYEMS",          "name": "Payrolls",          "unit": "K MoM",   "transform": "mom",     "freq": "M", "color": "#06b6d4",  "target": None},
     # Activity
     {"key": "indpro",       "fred_id": "INDPRO",          "name": "Industrial Prod.",  "unit": "% YoY",   "transform": "yoy",     "freq": "M", "color": "#8b5cf6",  "target": None},
-    {"key": "retail_sales", "fred_id": "RSXFS",           "name": "Retail Sales",      "unit": "% YoY",   "transform": "yoy",     "freq": "M", "color": "#a78bfa",  "target": None},
+    {"key": "retail_sales", "fred_id": "MARTSSM44W72USS",  "name": "Retail ex-Auto/Gas","unit": "% YoY",   "transform": "yoy",     "freq": "M", "color": "#a78bfa",  "target": None},
     {"key": "housing",      "fred_id": "HOUST",           "name": "Housing Starts",    "unit": "K SAAR",  "transform": "level",   "freq": "M", "color": "#84cc16",  "target": None},
     {"key": "lei",          "fred_id": "USSLIND",         "name": "Leading Index",     "unit": "% MoM",   "transform": "mom_pct", "freq": "M", "color": "#34d399",  "target": None},
     {"key": "umich",        "fred_id": "UMCSENT",         "name": "UMich Sentiment",   "unit": "index",   "transform": "level",   "freq": "M", "color": "#22d3ee",  "target": None},
