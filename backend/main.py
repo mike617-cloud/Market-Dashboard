@@ -214,7 +214,7 @@ EQUITY_TICKERS = [
     {"key": "stoxx50", "ticker": "^STOXX50E","fred_id": None,         "name": "Euro Stoxx 50",    "region": "Europe",     "is_etf": False},
     {"key": "dax",     "ticker": "^GDAXI",   "fred_id": None,         "name": "DAX",              "region": "Europe",     "is_etf": False},
     {"key": "ftse",    "ticker": "^FTSE",    "fred_id": None,         "name": "FTSE 100",         "region": "UK",         "is_etf": False},
-    {"key": "cac",     "ticker": "^FCHI",    "name": "CAC 40",           "region": "Europe",     "is_etf": False},
+    {"key": "cac",     "ticker": "^FCHI",    "fred_id": None,         "name": "CAC 40",           "region": "Europe",     "is_etf": False},
     # Asia-Pacific
     {"key": "nikkei",  "ticker": "^N225",    "fred_id": "NIKKEI225", "name": "Nikkei 225",   "region": "Asia",       "is_etf": False},
     {"key": "hangseng","ticker": "^HSI",     "fred_id": None, "name": "Hang Seng",        "region": "Asia",       "is_etf": False},
